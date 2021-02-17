@@ -1,8 +1,16 @@
+const models = require('./models/index');
 const express = require('express');
 const { ApolloServer, gql } = require('apollo-server-express');
+require('dotenv').config();
+
+const db = require('./db');
+const { model } = require('mongoose');
 
 // Give ability to define port but fall back on 4000 when no port is specified
 const port = process.env.PORT || 4000;
+
+// Our DB_HOST
+const DB_HOST = process.env.DB_HOST;
 
 let notes = [
   { id: '1', content: 'Cool note!', author: 'Eli Whalen' },
@@ -29,25 +37,27 @@ const typeDefs = gql`
 // Construct our resolver function for the previously defined schema fields
 const resolvers = {
   Query: {
-    notes: () => notes,
-    note: (parent, args) => {
-      return notes.find(note => note.id === args.id);
+    notes: async () => {
+      return await models.Note.find();
+    },
+    note: async (parent, args) => {
+      return await models.Note.findById(args.id);
     }
   },
   Mutation: {
-    newNote: (parent, args) => {
-      let noteValue = {
-        id: String(notes.length + 1),
+    newNote: async (parent, args) => {
+      return await models.Note.create({
         content: args.content,
         author: 'Eli Whalen'
-      };
-      notes.push(noteValue);
-      return noteValue;
+      });
     }
   }
 };
 
 const app = express();
+
+// Connect to our database
+db.connect(DB_HOST);
 
 // Setup apollo server
 const server = new ApolloServer({ typeDefs, resolvers });
